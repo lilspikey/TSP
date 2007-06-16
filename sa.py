@@ -38,19 +38,7 @@ def kirkpatrick_cooling(T0,Tn,max_evaluations):
         yield T
         T=alpha*T
 
-def gg_cooling(max_evaluations):
-    t=1
-    while True:
-        yield (0.1*max_evaluations)/math.log(t+1)
-        t+=1
-
-def linear_cooling(T0,max_evaluations):
-    t=0.0
-    while True:
-        yield (T0*(max_evaluations-t))/max_evaluations
-        t=t+1.0
-
-def anneal(init_function,move_operator,objective_function,max_evaluations):
+def anneal(init_function,move_operator,objective_function,max_evaluations,start_temp,end_temp):
     
     # wrap the objective function
     objective_function=ObjectiveFunction(objective_function,max_evaluations)
@@ -59,7 +47,7 @@ def anneal(init_function,move_operator,objective_function,max_evaluations):
     current=init_function()
     current_score=objective_function(current)
     
-    cooling=kirkpatrick_cooling(2.5,0.05,max_evaluations)
+    cooling=kirkpatrick_cooling(start_temp,end_temp,max_evaluations)
     
     logging.info('anneal started: score=%f',current_score)
     temperature=0
@@ -73,8 +61,6 @@ def anneal(init_function,move_operator,objective_function,max_evaluations):
                 temperature = cooling.next()
                 
                 p=P(current_score,next_score,temperature)
-                if objective_function.num_evaluations % 1000 == 0:
-                    logging.info('temperature: %f, p: %f, current: %f, next: %f',temperature,p,current_score,next_score)
                 if random.random() < p:
                     current=next
                     current_score=next_score

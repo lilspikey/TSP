@@ -122,17 +122,21 @@ def run_hillclimb(init_function,move_operator,objective_function,max_iterations)
     iterations,score,best=hillclimb_and_restart(init_function,move_operator,objective_function,max_iterations)
     return iterations,score,best
 
-def run_anneal(init_function,move_operator,objective_function,max_iterations):
+def run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp):
+    if start_temp is None or end_temp is None:
+        usage();
+        print "missing --cooling start_temp:end_temp for annealing"
+        sys.exit(1)
     from sa import anneal
-    iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations)
+    iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp)
     return iterations,score,best
 
 def usage():
-    print "usage: python %s [-o <output image file>] [-v] [-m reversed_sections|swapped_cities] -n <max iterations> <city file>" % sys.argv[0]
+    print "usage: python %s [-o <output image file>] [-v] [-m reversed_sections|swapped_cities] -n <max iterations> [-a hillclimb|anneal] [--cooling start_temp:end_temp] <city file>" % sys.argv[0]
 
 def main():
     try:
-        options, args = getopt.getopt(sys.argv[1:], "ho:vm:n:a:")
+        options, args = getopt.getopt(sys.argv[1:], "ho:vm:n:a:", ["cooling="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -141,6 +145,8 @@ def main():
     verbose=None
     move_operator=reversed_sections
     run_algorithm=run_hillclimb
+    
+    start_temp,end_temp=None,None
     
     for option,arg in options:
         if option == '-v':
@@ -161,7 +167,13 @@ def main():
             if arg == 'hillclimb':
                 run_algorithm=run_hillclimb
             elif arg == 'anneal':
-                run_algorithm=run_anneal
+                # do this to pass start_temp and end_temp to run_anneal
+                def run_anneal_with_temp(init_function,move_operator,objective_function,max_iterations):
+                    return run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp)
+                run_algorithm=run_anneal_with_temp
+        elif option == '--cooling':
+            start_temp,end_temp=arg.split(':')
+            start_temp,end_temp=float(start_temp),float(end_temp)
     
     if max_iterations is None:
         usage();
@@ -170,6 +182,11 @@ def main():
     if out_file_name and not out_file_name.endswith(".png"):
         usage()
         print "output image file name must end in .png"
+        sys.exit(1)
+    
+    if len(args) != 1:
+        usage()
+        print "no city file specified"
         sys.exit(1)
     
     city_file=args[0]
