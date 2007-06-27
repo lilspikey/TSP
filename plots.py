@@ -3,13 +3,12 @@ matplotlib.use('TkAgg')
 
 from pylab import *
 
-coords=range(-10,11)
+from sa import P
 
-import math
+coords=[x*0.1 for x in range(0,100)]
 
-def f(x):
-    return x*(math.sin(x/2.0)**2)
-
-plot(coords,[f(x) for x in coords],'b-',[-6],[f(-6)],'ro')
+plot(coords,[P(x,0,1) for x in coords],'b-')
+xlabel('difference')
+ylabel('probability')
 
 show()

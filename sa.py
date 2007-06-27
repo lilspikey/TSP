@@ -9,66 +9,59 @@ def P(prev_score,next_score,temperature):
         return math.exp( -abs(next_score-prev_score)/temperature )
 
 class ObjectiveFunction:
-    '''class to wrap an objective function and make sure
-    it is never called more than max_evaluation times.
-    also used to keep track of the best solution evaluated'''
-    def __init__(self,objective_function,max_evaluations):
+    '''class to wrap an objective function and 
+    keep track of the best solution evaluated'''
+    def __init__(self,objective_function):
         self.objective_function=objective_function
-        self.num_evaluations=0
-        self.max_evaluations=max_evaluations
         self.best=None
         self.best_score=None
     
     def __call__(self,solution):
-        if self.num_evaluations >= self.max_evaluations:
-            raise StopIteration # stop any further evaluations
-        self.num_evaluations+=1
         score=self.objective_function(solution)
         if self.best is None or score > self.best_score:
             self.best_score=score
             self.best=solution
-            logging.info('%d, new best score: %f',self.num_evaluations,self.best_score)
+            logging.info('new best score: %f',self.best_score)
         return score
 
-def kirkpatrick_cooling(T0,Tn,max_evaluations):
-    T=T0
-    alpha=(Tn/float(T0))**(1.0/max_evaluations)
-    logging.info('alpha %f',alpha)
+def kirkpatrick_cooling(start_temp,alpha):
+    T=start_temp
     while True:
         yield T
         T=alpha*T
 
-def anneal(init_function,move_operator,objective_function,max_evaluations,start_temp,end_temp):
+def anneal(init_function,move_operator,objective_function,max_evaluations,start_temp,alpha):
     
-    # wrap the objective function
-    objective_function=ObjectiveFunction(objective_function,max_evaluations)
-    
+    # wrap the objective function (so we record the best)
+    objective_function=ObjectiveFunction(objective_function)
     
     current=init_function()
     current_score=objective_function(current)
+    num_evaluations=1
     
-    cooling=kirkpatrick_cooling(start_temp,end_temp,max_evaluations)
+    cooling=kirkpatrick_cooling(start_temp,alpha)
     
     logging.info('anneal started: score=%f',current_score)
-    temperature=0
-    try:
-        while True:
-            # examine moves around our current position
-            for next in move_operator(current):
-                # see if this move is better than the current
-                next_score=objective_function(next)
-                
-                temperature = cooling.next()
-                
-                p=P(current_score,next_score,temperature)
-                if random.random() < p:
-                    current=next
-                    current_score=next_score
-                    break
-    except StopIteration:
-        pass # StopIteration will be thrown by our wrapper to signal we're done
+    temperature=start_temp
     
-    num_evaluations=objective_function.num_evaluations
+    while num_evaluations < max_evaluations:
+        # examine moves around our current position
+        for next in move_operator(current):
+            if num_evaluations >= max_evaluations:
+                break
+            
+            next_score=objective_function(next)
+            num_evaluations+=1
+            
+            # probablistically accept this solution
+            # always accepting better solutions
+            p=P(current_score,next_score,temperature)
+            if random.random() < p:
+                current=next
+                current_score=next_score
+                break
+        temperature=cooling.next() # update temperature
+    
     best_score=objective_function.best_score
     best=objective_function.best
     logging.info('final temperature: %f',temperature)

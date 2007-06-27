@@ -122,17 +122,17 @@ def run_hillclimb(init_function,move_operator,objective_function,max_iterations)
     iterations,score,best=hillclimb_and_restart(init_function,move_operator,objective_function,max_iterations)
     return iterations,score,best
 
-def run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp):
-    if start_temp is None or end_temp is None:
+def run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha):
+    if start_temp is None or alpha is None:
         usage();
-        print "missing --cooling start_temp:end_temp for annealing"
+        print "missing --cooling start_temp:alpha for annealing"
         sys.exit(1)
     from sa import anneal
-    iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp)
+    iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
     return iterations,score,best
 
 def usage():
-    print "usage: python %s [-o <output image file>] [-v] [-m reversed_sections|swapped_cities] -n <max iterations> [-a hillclimb|anneal] [--cooling start_temp:end_temp] <city file>" % sys.argv[0]
+    print "usage: python %s [-o <output image file>] [-v] [-m reversed_sections|swapped_cities] -n <max iterations> [-a hillclimb|anneal] [--cooling start_temp:alpha] <city file>" % sys.argv[0]
 
 def main():
     try:
@@ -146,7 +146,7 @@ def main():
     move_operator=reversed_sections
     run_algorithm=run_hillclimb
     
-    start_temp,end_temp=None,None
+    start_temp,alpha=None,None
     
     for option,arg in options:
         if option == '-v':
@@ -167,13 +167,13 @@ def main():
             if arg == 'hillclimb':
                 run_algorithm=run_hillclimb
             elif arg == 'anneal':
-                # do this to pass start_temp and end_temp to run_anneal
+                # do this to pass start_temp and alpha to run_anneal
                 def run_anneal_with_temp(init_function,move_operator,objective_function,max_iterations):
-                    return run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,end_temp)
+                    return run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
                 run_algorithm=run_anneal_with_temp
         elif option == '--cooling':
-            start_temp,end_temp=arg.split(':')
-            start_temp,end_temp=float(start_temp),float(end_temp)
+            start_temp,alpha=arg.split(':')
+            start_temp,alpha=float(start_temp),float(alpha)
     
     if max_iterations is None:
         usage();
