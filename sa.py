@@ -39,15 +39,16 @@ def anneal(init_function,move_operator,objective_function,max_evaluations,start_
     current_score=objective_function(current)
     num_evaluations=1
     
-    cooling=kirkpatrick_cooling(start_temp,alpha)
+    cooling_schedule=kirkpatrick_cooling(start_temp,alpha)
     
     logging.info('anneal started: score=%f',current_score)
-    temperature=start_temp
     
-    while num_evaluations < max_evaluations:
+    for temperature in cooling_schedule:
+        done = False
         # examine moves around our current position
         for next in move_operator(current):
             if num_evaluations >= max_evaluations:
+                done=True
                 break
             
             next_score=objective_function(next)
@@ -60,7 +61,8 @@ def anneal(init_function,move_operator,objective_function,max_evaluations,start_
                 current=next
                 current_score=next_score
                 break
-        temperature=cooling.next() # update temperature
+        # see if completely finished
+        if done: break
     
     best_score=objective_function.best_score
     best=objective_function.best
