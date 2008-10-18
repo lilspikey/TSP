@@ -76,7 +76,7 @@ def recombine(tour1,tour2):
     
     # we may need to attempt this a couple
     # of times, so loop until done
-    while True:
+    for i in tour1:
         start=0
         current=start # current city
         tour=[current]
@@ -99,6 +99,10 @@ def recombine(tour1,tour2):
             if start in next:
                 return tour
     
+    # if we can't find a common route
+    # (if parents are too different)
+    # so just return one parent or other
+    return random.choice([tour1, tour2])
 
 def cartesian_matrix(coords):
     '''create a distance matrix for the city coords that uses straight line distance'''
@@ -185,6 +189,11 @@ def run_anneal(init_function,move_operator,objective_function,max_iterations,sta
     iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
     return iterations,score,best
 
+def run_evolve(init_function,move_operator,objective_function,max_iterations):
+    from ga import evolve
+    iterations,score,best=evolve(init_function,move_operator,objective_function,max_iterations,recombine)
+    return iterations,score,best
+
 def usage():
     print "usage: python %s [-o <output image file>] [-v] [-m reversed_sections|swapped_cities] -n <max iterations> [-a hillclimb|anneal] [--cooling start_temp:alpha] <city file>" % sys.argv[0]
 
@@ -225,6 +234,8 @@ def main():
                 def run_anneal_with_temp(init_function,move_operator,objective_function,max_iterations):
                     return run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
                 run_algorithm=run_anneal_with_temp
+            elif arg == 'evolve':
+                run_algorithm=run_evolve
         elif option == '--cooling':
             start_temp,alpha=arg.split(':')
             start_temp,alpha=float(start_temp),float(alpha)
