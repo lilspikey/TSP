@@ -46,6 +46,60 @@ def swapped_cities(tour):
             copy[i],copy[j]=tour[j],tour[i]
             yield copy
 
+def edges(tour):
+    tour_len=len(tour)
+    for i in xrange(tour_len):
+        a,b=tour[i],tour[(i+1)%tour_len]
+        if a > b:
+            a,b=b,a
+        yield (a,b)
+
+def _add_route_choices(tour, routes_choices):
+    for a, b in edges(tour):
+        # from a can got to b and vice-versa
+        routes_choices[a].add(b)
+        routes_choices[b].add(a)
+
+def calc_route_choices(tour1, tour2):
+    routes_choices = [set() for i in tour1]
+    _add_route_choices(tour1, routes_choices)
+    _add_route_choices(tour2, routes_choices)
+    return routes_choices
+
+def recombine(tour1,tour2):
+    '''
+    combine two parent routes
+    to create a new route that only has edges that appear
+    in one or both parents
+    '''
+    routes_choices=calc_route_choices(tour1, tour2)
+    
+    # we may need to attempt this a couple
+    # of times, so loop until done
+    while True:
+        start=0
+        current=start # current city
+        tour=[current]
+        chosen=set(tour)
+        for i in tour1:
+            # find out what our options are
+            next=routes_choices[current] 
+            possible=next-chosen # can't go back to cities we've already been to
+            if len(possible) > 0:
+                current=random.choice(list(possible))
+                tour.append(current)
+                chosen.add(current)
+            else:
+                break
+        # found a child
+        if len(tour) == len(tour1):
+            # check if the route choice would let us connect
+            # back to the beginning city
+            next=routes_choices[current] 
+            if start in next:
+                return tour
+    
+
 def cartesian_matrix(coords):
     '''create a distance matrix for the city coords that uses straight line distance'''
     matrix={}

@@ -1,5 +1,6 @@
 import tsp
 
+import random
 from math import sqrt
 
 def test_rand_seq():
@@ -74,3 +75,30 @@ def test_tour_length():
     
     assert (1+sqrt(2)+1) == tsp.tour_length(matrix,[0,1,2])
     assert (1+sqrt(2)+1+sqrt(2)) == tsp.tour_length(matrix,[0,1,2,3])
+
+def test_edges():
+    assert list(tsp.edges([0, 1, 2, 3])) == [(0, 1), (1, 2), (2, 3), (0, 3)]
+
+def test_calc_route_choices():
+    assert tsp.calc_route_choices([0,1], [0,1]) == [set([1]), set([0])]
+    assert tsp.calc_route_choices([0,1,2], [0,1,2]) == [set([1,2]), set([0,2]), set([0,1])]
+    assert tsp.calc_route_choices([0,1,2,3,4], [0,1,2,4,3]) == [set([1, 3, 4]), set([0, 2]), set([1, 3, 4]), set([0, 2, 4]), set([0, 2, 3])]
+
+def test_recombine():
+    # when recombining the edges that appear in the child should
+    # be present in one or both parents (only recombing the existing edges
+    # not making new ones)
+    for i in xrange(1000):
+        # create two parent tours of same length
+        tour_len=int(3+random.random()*12)
+        tour1=tsp.init_random_tour(tour_len)
+        tour2=tsp.init_random_tour(tour_len)
+        
+        child=tsp.recombine(tour1, tour2)
+        assert len(child) == tour_len
+        
+        # make sure child edges appear in parent edges
+        parent_edges=set(tsp.edges(tour1)).union(set(tsp.edges(tour2)))
+        for edge in tsp.edges(child):
+            assert edge in parent_edges
+            
