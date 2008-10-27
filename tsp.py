@@ -77,7 +77,7 @@ def recombine(tour1,tour2):
     # we may need to attempt this a couple
     # of times, so loop until done
     for i in tour1:
-        start=0
+        start=tour1[0]
         current=start # current city
         tour=[current]
         chosen=set(tour)

@@ -1,6 +1,7 @@
 from optimise import ObjectiveFunction
 
 import random
+import logging
 
 class Individual(object):
     '''
@@ -37,35 +38,64 @@ def pop_stats(population):
     scores=[p.score() for p in population]
     avg=sum(scores)/float(pop_size)
     var=sum((score-avg)**2 for score in scores)/float(pop_size)
-    print "avg: ", avg, " var: ", var
+    logging.info("avg: %f var: %f", avg, var)
+
+def tournament(population, size, reverse=False):
+    selected=random.sample(population,size)
+    if reverse:
+        scoring=min
+    else:
+        scoring=max
+    best_score, best=scoring((i.score(), i) for i in population)
+    return best
+
+def replace_if_better(population, parent, child):
+    if parent.score() < child.score():
+        replace(population, parent, child)
+
+def replace(population, parent, child):
+    population.remove(parent)
+    population.append(child)
+
+def select_worst(population):
+    return tournament(population, len(population), reverse=True)
+
+def replace_worst(population, child):
+    worst=select_worst(population)
+    replace(population, worst, child)
+
+def replace_worst_if_better(population, child):
+    worst=select_worst(population)
+    replace_if_better(population, worst, child)
+
+def in_population(population, child):
+    for i in population:
+        if i.solution == child.solution:
+            return True
+    return False
 
 def evolve(init_function,move_operator,objective_function,max_evaluations,recombine_operator):
     objective_function=ObjectiveFunction(objective_function)
     
-    pop_size=5
-    mutation_rate=1.0
-    breed_rate=0.1
+    pop_size=150
+    cull_size=pop_size
+    tournament_size=2
+    mutation_rate=0.5
+    breed_rate=1
+    #insert=replace_worst
+    insert=replace_worst_if_better
+    
     population=[Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)]
     
     while objective_function.num_evaluations < max_evaluations:
-        p1,p2=random.sample(population,2)
-        #if p1.score() < p2.score():
-        #    population.remove(p1)
-        #else:
-        #    population.remove(p2)
-        if random.random() < breed_rate:
-            child=p1.breed(p2)
-        else:
-            child=p1
-        if random.random() < mutation_rate:
-            child=child.mutate()
+        p1=tournament(population, tournament_size)
+        p2=tournament(population, tournament_size)
+        child=p1.breed(p2)
+        child=child.mutate()
         
-        if p1.score() < child.score():
-            population.remove(p1)
-            population.append(child)
-        #population.append(child)
-        #population.sort(key=Individual.score, reverse=True)
-        #population=population[:pop_size]
+        child.score()
+        if not in_population(population, child):
+            insert(population, child)
         
         if objective_function.num_evaluations % 1000 == 0:
             pop_stats(population)
