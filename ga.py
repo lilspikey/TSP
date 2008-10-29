@@ -30,6 +30,12 @@ class Individual(object):
             self._score=self.objective_function(self.solution)
         return self._score
     
+    def __hash__(self):
+        return hash(self.solution)
+    
+    def __eq__(self, other):
+        return self.solution == other.solution
+    
     def __repr__(self):
         return "Individual(%d)" % self.score()
 
@@ -41,12 +47,13 @@ def pop_stats(population):
     logging.info("avg: %f var: %f", avg, var)
 
 def tournament(population, size, reverse=False):
-    selected=random.sample(population,size)
+    population=list(population)
+    selected=(random.choice(population) for i in xrange(size))
     if reverse:
         scoring=min
     else:
         scoring=max
-    best_score, best=scoring((i.score(), i) for i in population)
+    best_score, best=scoring((i.score(), i) for i in selected)
     return best
 
 def replace_if_better(population, parent, child):
@@ -55,46 +62,47 @@ def replace_if_better(population, parent, child):
 
 def replace(population, parent, child):
     population.remove(parent)
-    population.append(child)
+    population.add(child)
 
-def select_worst(population):
-    return tournament(population, len(population), reverse=True)
+def select_worst(population, tournament_size=None):
+    if tournament_size is None:
+        tournament_size=len(population)
+    return tournament(population, tournament_size, reverse=True)
 
-def replace_worst(population, child):
-    worst=select_worst(population)
+def replace_worst(population, child, tournament_size=None):
+    worst=select_worst(population, tournament_size)
     replace(population, worst, child)
 
-def replace_worst_if_better(population, child):
-    worst=select_worst(population)
+def replace_worst_if_better(population, child, tournament_size=None):
+    worst=select_worst(population, tournament_size)
     replace_if_better(population, worst, child)
-
-def in_population(population, child):
-    for i in population:
-        if i.solution == child.solution:
-            return True
-    return False
 
 def evolve(init_function,move_operator,objective_function,max_evaluations,recombine_operator):
     objective_function=ObjectiveFunction(objective_function)
     
-    pop_size=150
+    pop_size=10
     cull_size=pop_size
-    tournament_size=2
-    mutation_rate=0.5
-    breed_rate=1
-    #insert=replace_worst
-    insert=replace_worst_if_better
+    breed_tournament_size=2
+    replace_tournament_size=2
     
-    population=[Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)]
+    insert=lambda population, child: replace_worst_if_better(population, child, replace_tournament_size)
+    #insert=replace_worst_if_better
+    #insert=replace_worst
+    
+    population=set([Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)])
     
     while objective_function.num_evaluations < max_evaluations:
-        p1=tournament(population, tournament_size)
-        p2=tournament(population, tournament_size)
+        p1=tournament(population, breed_tournament_size)
+        p2=tournament(population, breed_tournament_size)
         child=p1.breed(p2)
         child=child.mutate()
         
         child.score()
-        if not in_population(population, child):
+        if child not in population:
+            #worst=p1
+            #if p2.score() < p1.score():
+            #    worst=p2
+            #replace(population, worst, child)
             insert(population, child)
         
         if objective_function.num_evaluations % 1000 == 0:

@@ -29,12 +29,13 @@ def reversed_sections(tour):
     '''generator to return all possible variations where the section between two cities are swapped'''
     for i,j in all_pairs(len(tour)):
         if i != j:
-            copy=tour[:]
+            copy=list(tour)
             if i < j:
                 copy[i:j+1]=reversed(tour[i:j+1])
             else:
                 copy[i+1:]=reversed(tour[:j])
                 copy[:j]=reversed(tour[i+1:])
+            copy=tuple(copy)
             if copy != tour: # no point returning the same tour
                 yield copy
 
@@ -42,9 +43,9 @@ def swapped_cities(tour):
     '''generator to create all possible variations where two cities have been swapped'''
     for i,j in all_pairs(len(tour)):
         if i < j:
-            copy=tour[:]
+            copy=list(tour)
             copy[i],copy[j]=tour[j],tour[i]
-            yield copy
+            yield tuple(copy)
 
 def edges(tour):
     tour_len=len(tour)
@@ -73,36 +74,33 @@ def recombine(tour1,tour2):
     in one or both parents
     '''
     routes_choices=calc_route_choices(tour1, tour2)
-    
-    # we may need to attempt this a couple
-    # of times, so loop until done
-    for i in tour1:
-        start=tour1[0]
-        current=start # current city
-        tour=[current]
-        chosen=set(tour)
-        for i in tour1:
-            # find out what our options are
-            next=routes_choices[current] 
-            possible=next-chosen # can't go back to cities we've already been to
-            if len(possible) > 0:
-                current=random.choice(list(possible))
-                tour.append(current)
-                chosen.add(current)
-            else:
-                break
-        # found a child
-        if len(tour) == len(tour1):
-            # check if the route choice would let us connect
-            # back to the beginning city
-            next=routes_choices[current] 
-            if start in next:
-                return tour
-    
-    # if we can't find a common route
-    # (if parents are too different)
-    # so just return one parent or other
-    return random.choice([tour1, tour2])
+    return find_common_route(routes_choices, tour1)
+
+def find_common_route(routes_choices, tour1):
+    current=random.choice(tour1) # random starting city
+    tour=[current]
+    chosen=set(tour)
+    while len(tour) != len(tour1):
+        # find out what our options are
+        next=choose_next_neighbour(routes_choices, chosen, current)
+        if next is None:
+            # no obvious neighbours, so just choose one
+            # from the other remaining cities
+            possible=set(tour1)-chosen
+            next=random.choice(list(possible))
+        current=next
+        tour.append(current)
+        chosen.add(current)
+            
+    return tuple(tour1)
+
+def choose_next_neighbour(routes_choices, chosen, city):
+    neighbours=list(routes_choices[city]-chosen)
+    if len(neighbours):
+        random.shuffle(neighbours)
+        count, neighbour=min((len(routes_choices[n]), n) for n in neighbours)
+        return neighbour
+    return None
 
 def cartesian_matrix(coords):
     '''create a distance matrix for the city coords that uses straight line distance'''
@@ -173,7 +171,7 @@ def write_tour_to_img(coords,tour,title,img_file):
 def init_random_tour(tour_length):
    tour=range(tour_length)
    random.shuffle(tour)
-   return tour
+   return tuple(tour)
 
 def run_hillclimb(init_function,move_operator,objective_function,max_iterations):
     from hillclimb import hillclimb_and_restart
@@ -281,4 +279,9 @@ def main():
         write_tour_to_img(coords,best,'%s: %f'%(city_file,score),file(out_file_name,'w'))
 
 if __name__ == "__main__":
+    try:
+        import psyco
+        psyco.full()
+    except ImportError:
+        pass
     main()
