@@ -187,9 +187,13 @@ def run_anneal(init_function,move_operator,objective_function,max_iterations,sta
     iterations,score,best=anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
     return iterations,score,best
 
-def run_evolve(init_function,move_operator,objective_function,max_iterations):
+def run_evolve(init_function,move_operator,objective_function,max_iterations,pop_size):
+    if pop_size is None:
+        usage();
+        print "missing --popsize size for evolve"
+        sys.exit(1)
     from ga import evolve
-    iterations,score,best=evolve(init_function,move_operator,objective_function,max_iterations,recombine)
+    iterations,score,best=evolve(init_function,move_operator,objective_function,max_iterations,recombine,pop_size)
     return iterations,score,best
 
 def usage():
@@ -197,7 +201,7 @@ def usage():
 
 def main():
     try:
-        options, args = getopt.getopt(sys.argv[1:], "ho:vm:n:a:", ["cooling="])
+        options, args = getopt.getopt(sys.argv[1:], "ho:vm:n:a:", ["cooling=","popsize="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -208,6 +212,8 @@ def main():
     run_algorithm=run_hillclimb
     
     start_temp,alpha=None,None
+    
+    pop_size=None
     
     for option,arg in options:
         if option == '-v':
@@ -233,10 +239,14 @@ def main():
                     return run_anneal(init_function,move_operator,objective_function,max_iterations,start_temp,alpha)
                 run_algorithm=run_anneal_with_temp
             elif arg == 'evolve':
-                run_algorithm=run_evolve
+                def run_evolve_with_pop_size(init_function,move_operator,objective_function,max_iterations):
+                    return run_evolve(init_function,move_operator,objective_function,max_iterations,pop_size)
+                run_algorithm=run_evolve_with_pop_size
         elif option == '--cooling':
             start_temp,alpha=arg.split(':')
             start_temp,alpha=float(start_temp),float(alpha)
+        elif option == '--popsize':
+            pop_size=int(arg)
     
     if max_iterations is None:
         usage();

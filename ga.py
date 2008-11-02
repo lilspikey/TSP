@@ -77,23 +77,16 @@ def replace_worst_if_better(population, child, tournament_size=None):
     worst=select_worst(population, tournament_size)
     replace_if_better(population, worst, child)
 
-def evolve(init_function,move_operator,objective_function,max_evaluations,recombine_operator):
+def evolve(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size,breed_size=2,replace_size=2):
     objective_function=ObjectiveFunction(objective_function)
     
-    pop_size=10
-    cull_size=pop_size
-    breed_tournament_size=2
-    replace_tournament_size=2
-    
-    insert=lambda population, child: replace_worst_if_better(population, child, replace_tournament_size)
-    #insert=replace_worst_if_better
-    #insert=replace_worst
+    insert=lambda population, child: replace_worst_if_better(population, child, replace_size)
     
     population=set([Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)])
     
     while objective_function.num_evaluations < max_evaluations:
-        p1=tournament(population, breed_tournament_size)
-        p2=tournament(population, breed_tournament_size)
+        p1=tournament(population, breed_size)
+        p2=tournament(population, breed_size)
         child=p1.breed(p2)
         child=child.mutate()
         
