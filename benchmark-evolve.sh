@@ -1,6 +1,6 @@
 #!/bin/sh
 
-for popsize in 2 5 10 15; do
+for popsize in 4 8 12 14 16; do
     echo '' > results/evolve100-${popsize}.txt
     for i in $(jot 100 1 100); do
         echo evolve ${popsize} $i

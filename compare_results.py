@@ -8,25 +8,25 @@ def sd(scores):
     var=sum((s-avg)*(s-avg) for s in scores)/len(scores)
     return sqrt(var)
 
-best_score=None
-best_score_file=None
+def best_score(results, index):
+    best,best_name=max((scores[index],name) for name, scores in results.items())
+    return best,best_name
 
 for arg in sys.argv[1:]:
     lines=open(arg).readlines()
     lines=[line.strip() for line in lines if line.strip() != '']
     scores=[float(line.split()[1]) for line in lines]
     if len(scores) > 0:
-        avg=sum(scores)/len(scores)
-        best=max(scores)
-        
-        if best_score_file is None or best_score < best:
-            best_score=best
-            best_score_file=arg
-                
+        avg=sum(scores)/len(scores)                
         results[arg]=(min(scores),avg,max(scores),sd(scores))
-        #results[arg]=avg
 
-print "best found: %d in %s" % (best_score,best_score_file)
+best,best_name=best_score(results,2)
+print "best best: %f in %s" % (best,best_name)
+best,best_name=best_score(results,1)
+print "best avg: %f in %s" % (best,best_name)
+best,best_name=best_score(results,0)
+print "best worst: %f in %s" % (best,best_name)
+
 
 avgs=results.keys()
 avgs.sort(key=lambda arg: -results[arg][1])
