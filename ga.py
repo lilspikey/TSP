@@ -18,12 +18,16 @@ class Individual(object):
         return Individual(solution, self.objective_function, self.move_operator, self.recombine_operator)
     
     def breed(self,parent):
-        solution=self.recombine_operator(self.solution, parent.solution)
-        return self._new_from_solution(solution)
+        if random.random() < 1:
+            solution=self.recombine_operator(self.solution, parent.solution)
+            return self._new_from_solution(solution)
+        return self
     
     def mutate(self):
-        solution=self.move_operator(self.solution).next()
-        return self._new_from_solution(solution)
+        if random.random() < 1:
+            solution=self.move_operator(self.solution).next()
+            return self._new_from_solution(solution)
+        return self
     
     def score(self):
         if self._score is None:
@@ -38,6 +42,13 @@ class Individual(object):
     
     def __repr__(self):
         return "Individual(%d)" % self.score()
+    
+    def __cmp__(self, other):
+        if self.score() < other.score():
+            return 1
+        elif self.score() > other.score():
+            return -1
+        return 0
 
 def pop_stats(population):
     pop_size=len(population)
@@ -77,7 +88,7 @@ def replace_worst_if_better(population, child, tournament_size=None):
     worst=select_worst(population, tournament_size)
     replace_if_better(population, worst, child)
 
-def evolve(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size,breed_size=2,replace_size=2):
+def steady_state(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size,breed_size=2,replace_size=2):
     objective_function=ObjectiveFunction(objective_function)
     
     insert=lambda population, child: replace_worst_if_better(population, child, replace_size)
@@ -103,5 +114,84 @@ def evolve(init_function,move_operator,objective_function,max_evaluations,recomb
     
     return (objective_function.num_evaluations,objective_function.best_score,objective_function.best)
 
+def cull(population, pop_size):
+    return set(list(sorted(population,reverse=True))[:pop_size])
 
+def generational(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size):
+    objective_function=ObjectiveFunction(objective_function)
+
+    insert=lambda population, child: replace_worst_if_better(population, child, replace_size)
+
+    population=set([Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)])
+    
+    while objective_function.num_evaluations < max_evaluations:
+        next_population=set()
+        #while len(next_population) < pop_size and objective_function.num_evaluations < max_evaluations:
+        #    p1=tournament(population, 2)
+            #p2=tournament(population, 2)
+            #child=p1.breed(p2)
+            #if random.random() < 0.1:
+        for p1 in population:
+            #p2=tournament(population, 2)
+            #child=p1.breed(p2)
+            child=p1.mutate()
+            child.score()
+            next_population.add(child)
+            if objective_function.num_evaluations % 1000 == 0:
+                pop_stats(population)
+        else:
+            # swap population over
+            population.update(next_population)
+            population=cull(population,pop_size)
+            #print len(population)
+    
+    return (objective_function.num_evaluations,objective_function.best_score,objective_function.best)
+
+def roulette_selection(population):
+    total_fitness=sum(i.score() for i in population)
+    r=random.random()
+    s=0
+    
+    for i in population:
+        s += i.score()
+        p=((total_fitness-s)/total_fitness)
+        if r <= p:
+            return i
+    return i # or return last one
+
+def hillclimb(i):
+    while True:
+        i1=i.mutate()
+        if i1.score() > i.score():
+            i=i1
+        if random.random() < 0.5:
+            break
+    return i
+
+def generational2(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size):
+    objective_function=ObjectiveFunction(objective_function)
+    
+    population=[Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)]
+    population.sort()
+    next_population=[]
+    
+    elite_size=1
+    
+    while objective_function.num_evaluations < max_evaluations:
+        if len(next_population)+elite_size < len(population):
+            p1=roulette_selection(population)
+            p2=roulette_selection(population)
+            child=p1.breed(p2).mutate()
+            #child=p1.mutate()
+            #child=hillclimb(child)
+            next_population.append(child)
+        else:
+            # keep some of the fittest individuals from last time
+            population=population[:elite_size] + next_population
+            population.sort()
+            next_population=[]
+    
+    return (objective_function.num_evaluations,objective_function.best_score,objective_function.best)
+
+evolve=generational2
 
