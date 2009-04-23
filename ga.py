@@ -34,11 +34,11 @@ class Individual(object):
             self._score=self.objective_function(self.solution)
         return self._score
     
-    def __hash__(self):
-        return hash(self.solution)
-    
-    def __eq__(self, other):
-        return self.solution == other.solution
+    #def __hash__(self):
+    #    return hash(self.solution)
+    #
+    #def __eq__(self, other):
+    #    return self.solution == other.solution
     
     def __repr__(self):
         return "Individual(%d)" % self.score()
@@ -59,13 +59,9 @@ def pop_stats(population):
 
 def tournament(population, size, reverse=False):
     population=list(population)
-    selected=(random.choice(population) for i in xrange(size))
-    if reverse:
-        scoring=min
-    else:
-        scoring=max
-    best_score, best=scoring((i.score(), i) for i in selected)
-    return best
+    selected=[random.choice(population) for i in xrange(size)]
+    selected.sort()
+    return selected
 
 def replace_if_better(population, parent, child):
     if parent.score() < child.score():
@@ -88,31 +84,32 @@ def replace_worst_if_better(population, child, tournament_size=None):
     worst=select_worst(population, tournament_size)
     replace_if_better(population, worst, child)
 
-def steady_state(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size,breed_size=2,replace_size=2):
+def replace_worst_parent(population, p1, p2, child):
+    worst=p1
+    if p2.score() < p1.score():
+        worst=p2
+    replace(population, worst, child)
+
+def steady_state(init_function,move_operator,objective_function,max_evaluations,recombine_operator,pop_size,breed_size=50,replace_size=2):
     objective_function=ObjectiveFunction(objective_function)
-    
+
     insert=lambda population, child: replace_worst_if_better(population, child, replace_size)
-    
+
     population=set([Individual(init_function(),objective_function,move_operator,recombine_operator) for i in xrange(pop_size)])
-    
+
     while objective_function.num_evaluations < max_evaluations:
-        p1=tournament(population, breed_size)
-        p2=tournament(population, breed_size)
+        competitors=tournament(population, breed_size)
+        p1,p2,worst=competitors[0],competitors[1],competitors[-1]
         child=p1.breed(p2)
         child=child.mutate()
         
-        child.score()
-        if child not in population:
-            #worst=p1
-            #if p2.score() < p1.score():
-            #    worst=p2
-            #replace(population, worst, child)
-            insert(population, child)
-        
+        replace(population, worst, child)
+
         if objective_function.num_evaluations % 1000 == 0:
             pop_stats(population)
-    
+
     return (objective_function.num_evaluations,objective_function.best_score,objective_function.best)
+
 
 def cull(population, pop_size):
     return set(list(sorted(population,reverse=True))[:pop_size])
@@ -193,5 +190,5 @@ def generational2(init_function,move_operator,objective_function,max_evaluations
     
     return (objective_function.num_evaluations,objective_function.best_score,objective_function.best)
 
-evolve=generational2
+evolve=steady_state
 
